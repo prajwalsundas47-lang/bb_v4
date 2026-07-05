@@ -28,6 +28,9 @@ jobs:
         run: |
           pip3 install --upgrade buildozer cython==0.29.36
 
+      - name: Use Java 17
+        run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+
       - name: Build APK with Buildozer
         run: |
           yes | buildozer android debug
