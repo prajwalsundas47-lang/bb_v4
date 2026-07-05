@@ -8,7 +8,7 @@ source.include_exts = py,png,jpg,json
 
 version = 4.0
 
-python3==3.11.9,kivy==2.3.1,pyjnius
+requirements = python3==3.11.9,kivy==2.3.1,pyjnius
 
 orientation = portrait
 fullscreen = 0
