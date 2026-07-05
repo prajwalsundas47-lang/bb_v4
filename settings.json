@@ -1,0 +1,6 @@
+{
+    "voice_enabled": true,
+    "wake_word": "bb",
+    "theme": "dark",
+    "default_city": ""
+}
