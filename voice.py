@@ -32,6 +32,20 @@ if ANDROID:
 
             if status == 0:  # TextToSpeech.SUCCESS
                 _tts_engine.setLanguage(Locale.US)
+
+                try:
+                    voices = _tts_engine.getVoices()
+                    if voices is not None:
+                        iterator = voices.iterator()
+                        while iterator.hasNext():
+                            voice = iterator.next()
+                            name = voice.getName().lower()
+                            if "female" in name:
+                                _tts_engine.setVoice(voice)
+                                break
+                except Exception:
+                    pass
+
                 _tts_ready = True
 
                 while _pending_speech:
@@ -145,6 +159,62 @@ def speak(text):
         return None
     except Exception as e:
         return f"Could not speak: {e}"
+
+
+_wake_active = [False]
+
+
+def stop_always_listening():
+    _wake_active[0] = False
+
+
+def start_always_listening(on_wake_command):
+    """
+    Continuously listens in a loop (while BB is open on screen) for
+    'hey bb' in what's said. Anything spoken right after the wake
+    phrase is passed to on_wake_command as the command; if the wake
+    phrase is said alone, on_wake_command(None) is called instead.
+
+    Note: this only runs while the BB app itself is open/foreground.
+    Surviving the app being minimized or the screen locked needs a
+    real persistent Android background service — a separate, bigger
+    project.
+    """
+    if _wake_active[0]:
+        return
+
+    _wake_active[0] = True
+    _listen_cycle(on_wake_command)
+
+
+def _listen_cycle(on_wake_command):
+    if not _wake_active[0]:
+        return
+
+    def _on_result(text, error):
+        if not _wake_active[0]:
+            return
+
+        if text:
+            lowered = text.lower()
+            command = None
+
+            for phrase in ("hey bb", "hey b b", "hey be be"):
+                if phrase in lowered:
+                    idx = lowered.find(phrase) + len(phrase)
+                    command = text[idx:].strip()
+                    break
+            else:
+                if lowered.startswith("bb "):
+                    command = text[3:].strip()
+
+            if command is not None:
+                on_wake_command(command if command else None)
+
+        if _wake_active[0]:
+            Clock.schedule_once(lambda dt: _listen_cycle(on_wake_command), 0.4)
+
+    start_listening(_on_result)
 
 
 def start_listening(on_result):
