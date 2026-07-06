@@ -4,6 +4,9 @@ from app_launcher import open_app
 from calculator import calculate
 from weather import get_weather
 from settings import get_setting, set_setting
+from search import search_web
+from camera import open_camera
+from system import volume_up, volume_down, mute, flashlight_on, flashlight_off, open_wifi_settings, set_brightness
 
 
 def execute(intent, text):
@@ -23,6 +26,42 @@ def execute(intent, text):
     elif intent == "weather":
         city = text.replace("weather", "", 1).strip()
         return get_weather(city)
+
+    elif intent == "search":
+        query = text
+        for prefix in ("search ", "google ", "look up "):
+            if query.startswith(prefix):
+                query = query[len(prefix):]
+                break
+        return search_web(query.strip())
+
+    elif intent == "camera":
+        return open_camera()
+
+    elif intent == "volume_up":
+        return volume_up()
+
+    elif intent == "volume_down":
+        return volume_down()
+
+    elif intent == "mute":
+        return mute()
+
+    elif intent == "flashlight_on":
+        return flashlight_on()
+
+    elif intent == "flashlight_off":
+        return flashlight_off()
+
+    elif intent == "wifi_settings":
+        return open_wifi_settings()
+
+    elif intent == "brightness":
+        level_str = text.replace("brightness", "", 1).strip().rstrip("%")
+        try:
+            return set_brightness(int(level_str))
+        except ValueError:
+            return "Example: brightness 70"
 
     elif intent == "set_setting":
         # Example: set theme to light
