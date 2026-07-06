@@ -1,3 +1,4 @@
+import traceback
 from kivy.core.window import Window
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
@@ -133,7 +134,10 @@ class BBUI(BoxLayout):
             return
 
         self._set_status("PROCESSING...", "ffb020")
-        reply = self.callback(text)
+        try:
+            reply = self.callback(text)
+        except Exception:
+            reply = "⚠️ ERROR:\n" + traceback.format_exc()
         self._append_chat(f"\n\n[color=888888]You:[/color] {text}\n[color=2ad9f2]BB:[/color] {reply}")
         self.input.text = ""
         self._set_status("SYSTEM ONLINE")
@@ -160,7 +164,10 @@ class BBUI(BoxLayout):
                 return
 
             self._set_status("PROCESSING...", "ffb020")
-            reply = self.callback(text)
+            try:
+                reply = self.callback(text)
+            except Exception:
+                reply = "⚠️ ERROR:\n" + traceback.format_exc()
             self._append_chat(f"\n\n[color=888888]You (voice):[/color] {text}\n[color=2ad9f2]BB:[/color] {reply}")
             self._set_status("SYSTEM ONLINE")
 
@@ -190,7 +197,10 @@ class BBUI(BoxLayout):
             if not command:
                 return
 
-            reply = self.callback(command)
+            try:
+                reply = self.callback(command)
+            except Exception:
+                reply = "⚠️ ERROR:\n" + traceback.format_exc()
             self._append_chat(f"\n\n[color=888888]You (voice):[/color] {command}\n[color=2ad9f2]BB:[/color] {reply}")
 
             if get_setting("voice_enabled"):
