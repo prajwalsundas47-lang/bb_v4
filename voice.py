@@ -21,6 +21,9 @@ if ANDROID:
     SpeechRecognizer = autoclass("android.speech.SpeechRecognizer")
     RecognizerIntent = autoclass("android.speech.RecognizerIntent")
     Intent = autoclass("android.content.Intent")
+    Handler = autoclass("android.os.Handler")
+    Looper = autoclass("android.os.Looper")
+    _main_handler = Handler(Looper.getMainLooper())
 
     class _TTSInitListener(PythonJavaClass):
         __javainterfaces__ = ["android/speech/tts/TextToSpeech$OnInitListener"]
@@ -30,31 +33,34 @@ if ANDROID:
         def onInit(self, status):
             global _tts_ready, _tts_failed
 
-            if status == 0:  # TextToSpeech.SUCCESS
-                _tts_engine.setLanguage(Locale.US)
+            try:
+                if status == 0:  # TextToSpeech.SUCCESS
+                    _tts_engine.setLanguage(Locale.US)
 
-                try:
-                    voices = _tts_engine.getVoices()
-                    if voices is not None:
-                        iterator = voices.iterator()
-                        while iterator.hasNext():
-                            voice = iterator.next()
-                            name = voice.getName().lower()
-                            if "female" in name:
-                                _tts_engine.setVoice(voice)
-                                break
-                except Exception:
-                    pass
-
-                _tts_ready = True
-
-                while _pending_speech:
-                    queued_text = _pending_speech.pop(0)
                     try:
-                        _tts_engine.speak(queued_text, 0, HashMap())
+                        voices = _tts_engine.getVoices()
+                        if voices is not None:
+                            iterator = voices.iterator()
+                            while iterator.hasNext():
+                                voice = iterator.next()
+                                name = voice.getName().lower()
+                                if "female" in name:
+                                    _tts_engine.setVoice(voice)
+                                    break
                     except Exception:
                         pass
-            else:
+
+                    _tts_ready = True
+
+                    while _pending_speech:
+                        queued_text = _pending_speech.pop(0)
+                        try:
+                            _tts_engine.speak(queued_text, 0, HashMap())
+                        except Exception:
+                            pass
+                else:
+                    _tts_failed = True
+            except Exception:
                 _tts_failed = True
 
     class _UIRunnable(PythonJavaClass):
@@ -102,7 +108,10 @@ if ANDROID:
 
         @java_method("(I)V")
         def onError(self, error):
-            self.on_result(None, f"Recognition error (code {error}).")
+            try:
+                self.on_result(None, f"Recognition error (code {error}).")
+            except Exception:
+                pass
 
         @java_method("(Landroid/os/Bundle;)V")
         def onResults(self, results):
@@ -113,7 +122,10 @@ if ANDROID:
                 else:
                     self.on_result(None, "No speech detected.")
             except Exception as e:
-                self.on_result(None, f"Could not read speech result: {e}")
+                try:
+                    self.on_result(None, f"Could not read speech result: {e}")
+                except Exception:
+                    pass
 
         @java_method("(Landroid/os/Bundle;)V")
         def onPartialResults(self, partialResults):
@@ -264,9 +276,11 @@ def start_listening(on_result):
             # Destroy any previous recognizer, then wait briefly before
             # creating a new one — recreating instantly disconnects
             # Android's speech service (ERROR_SERVER_DISCONNECTED / code 11).
+            # Using Android's own Handler here (not Kivy's Clock) keeps
+            # everything on the UI thread, which SpeechRecognizer requires.
             _destroy_current_recognizer()
 
-            def _create_and_start(dt):
+            def _create_and_start():
                 try:
                     recognizer = SpeechRecognizer.createSpeechRecognizer(activity)
                     _current_recognizer[0] = recognizer
@@ -280,7 +294,7 @@ def start_listening(on_result):
                 except Exception as e:
                     _safe_on_result(None, f"Could not start voice input: {e}")
 
-            Clock.schedule_once(_create_and_start, 0.3)
+            _main_handler.postDelayed(_UIRunnable(_create_and_start), 300)
 
         activity.runOnUiThread(_UIRunnable(_start))
 
