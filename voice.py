@@ -212,9 +212,21 @@ def _listen_cycle(on_wake_command):
                 on_wake_command(command if command else None)
 
         if _wake_active[0]:
-            Clock.schedule_once(lambda dt: _listen_cycle(on_wake_command), 0.4)
+            Clock.schedule_once(lambda dt: _listen_cycle(on_wake_command), 0.7)
 
     start_listening(_on_result)
+
+
+_current_recognizer = [None]
+
+
+def _destroy_current_recognizer():
+    if _current_recognizer[0] is not None:
+        try:
+            _current_recognizer[0].destroy()
+        except Exception:
+            pass
+        _current_recognizer[0] = None
 
 
 def start_listening(on_result):
@@ -249,7 +261,13 @@ def start_listening(on_result):
 
         def _start():
             try:
+                # Destroy any previous recognizer before creating a new one —
+                # never leave old sessions alive, or Android eventually
+                # runs out of recognizer connections and hard-crashes.
+                _destroy_current_recognizer()
+
                 recognizer = SpeechRecognizer.createSpeechRecognizer(activity)
+                _current_recognizer[0] = recognizer
                 recognizer.setRecognitionListener(listener)
 
                 intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
