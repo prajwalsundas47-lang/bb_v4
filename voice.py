@@ -166,6 +166,7 @@ _wake_active = [False]
 
 def stop_always_listening():
     _wake_active[0] = False
+    _destroy_current_recognizer()
 
 
 def start_always_listening(on_wake_command):
@@ -260,23 +261,26 @@ def start_listening(on_result):
         listener = _RecognitionListener(_safe_on_result)
 
         def _start():
-            try:
-                # Destroy any previous recognizer before creating a new one —
-                # never leave old sessions alive, or Android eventually
-                # runs out of recognizer connections and hard-crashes.
-                _destroy_current_recognizer()
+            # Destroy any previous recognizer, then wait briefly before
+            # creating a new one — recreating instantly disconnects
+            # Android's speech service (ERROR_SERVER_DISCONNECTED / code 11).
+            _destroy_current_recognizer()
 
-                recognizer = SpeechRecognizer.createSpeechRecognizer(activity)
-                _current_recognizer[0] = recognizer
-                recognizer.setRecognitionListener(listener)
+            def _create_and_start(dt):
+                try:
+                    recognizer = SpeechRecognizer.createSpeechRecognizer(activity)
+                    _current_recognizer[0] = recognizer
+                    recognizer.setRecognitionListener(listener)
 
-                intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toString())
+                    intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toString())
 
-                recognizer.startListening(intent)
-            except Exception as e:
-                _safe_on_result(None, f"Could not start voice input: {e}")
+                    recognizer.startListening(intent)
+                except Exception as e:
+                    _safe_on_result(None, f"Could not start voice input: {e}")
+
+            Clock.schedule_once(_create_and_start, 0.3)
 
         activity.runOnUiThread(_UIRunnable(_start))
 
