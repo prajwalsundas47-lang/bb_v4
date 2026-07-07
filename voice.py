@@ -174,11 +174,30 @@ def speak(text):
 
 
 _wake_active = [False]
+_wake_recognizer = [None]
 
 
 def stop_always_listening():
     _wake_active[0] = False
-    _destroy_current_recognizer()
+
+    if ANDROID and _wake_recognizer[0] is not None:
+        recognizer = _wake_recognizer[0]
+        _wake_recognizer[0] = None
+
+        def _stop():
+            try:
+                recognizer.stopListening()
+            except Exception:
+                pass
+            try:
+                recognizer.destroy()
+            except Exception:
+                pass
+
+        try:
+            PythonActivity.mActivity.runOnUiThread(_UIRunnable(_stop))
+        except Exception:
+            pass
 
 
 def start_always_listening(on_wake_command):
@@ -188,68 +207,88 @@ def start_always_listening(on_wake_command):
     phrase is passed to on_wake_command as the command; if the wake
     phrase is said alone, on_wake_command(None) is called instead.
 
+    Unlike start_listening() (one-shot, used by the MIC button), this
+    creates a SINGLE SpeechRecognizer and reuses it for every cycle by
+    calling startListening() again after each result — the standard,
+    stable Android pattern. Destroying and recreating a fresh recognizer
+    every cycle (an earlier approach) caused frequent
+    ERROR_SERVER_DISCONNECTED and app crashes.
+
     Note: this only runs while the BB app itself is open/foreground.
     Surviving the app being minimized or the screen locked needs a
     real persistent Android background service — a separate, bigger
     project.
     """
+    if not ANDROID:
+        on_wake_command(None)
+        return
+
     if _wake_active[0]:
         return
 
     _wake_active[0] = True
-    _listen_cycle(on_wake_command)
+    activity = PythonActivity.mActivity
 
-
-def _listen_cycle(on_wake_command):
-    if not _wake_active[0]:
-        return
-
-    def _on_result(text, error):
+    def _handle_result(text, error):
         if not _wake_active[0]:
             return
 
-        if text:
-            lowered = text.lower()
-            command = None
-
-            for phrase in ("hey bb", "hey b b", "hey be be"):
-                if phrase in lowered:
-                    idx = lowered.find(phrase) + len(phrase)
-                    command = text[idx:].strip()
-                    break
-            else:
-                if lowered.startswith("bb "):
-                    command = text[3:].strip()
-
-            if command is not None:
-                on_wake_command(command if command else None)
-
-        if _wake_active[0]:
-            Clock.schedule_once(lambda dt: _listen_cycle(on_wake_command), 0.7)
-
-    start_listening(_on_result)
-
-
-_current_recognizer = [None]
-
-
-def _destroy_current_recognizer():
-    if _current_recognizer[0] is not None:
         try:
-            _current_recognizer[0].destroy()
+            if text:
+                lowered = text.lower()
+                command = None
+
+                for phrase in ("hey bb", "hey b b", "hey be be"):
+                    if phrase in lowered:
+                        idx = lowered.find(phrase) + len(phrase)
+                        command = text[idx:].strip()
+                        break
+                else:
+                    if lowered.startswith("bb "):
+                        command = text[3:].strip()
+
+                if command is not None:
+                    on_wake_command(command if command else None)
         except Exception:
             pass
-        _current_recognizer[0] = None
+
+        if _wake_active[0]:
+            _main_handler.postDelayed(_UIRunnable(_restart_listening), 400)
+
+    listener = _RecognitionListener(_handle_result)
+
+    def _build_intent():
+        intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toString())
+        return intent
+
+    def _restart_listening():
+        if not _wake_active[0] or _wake_recognizer[0] is None:
+            return
+        try:
+            _wake_recognizer[0].startListening(_build_intent())
+        except Exception:
+            pass
+
+    def _create_recognizer():
+        try:
+            recognizer = SpeechRecognizer.createSpeechRecognizer(activity)
+            recognizer.setRecognitionListener(listener)
+            _wake_recognizer[0] = recognizer
+            recognizer.startListening(_build_intent())
+        except Exception:
+            pass
+
+    activity.runOnUiThread(_UIRunnable(_create_recognizer))
 
 
 def start_listening(on_result):
     """
-    Starts Android's built-in speech recognizer in the background
-    (no popup UI) and calls on_result(text, error) when done.
-    On success: on_result("what they said", None)
-    On failure: on_result(None, "reason it failed")
-    Guaranteed to call on_result exactly once, even on unexpected errors
-    or if the recognizer never responds at all.
+    One-shot: starts Android's built-in speech recognizer, calls
+    on_result(text, error) once, then the recognizer is destroyed.
+    Used by the MIC button (as opposed to start_always_listening,
+    which is the continuous WAKE-mode loop).
     """
     if not ANDROID:
         on_result(None, "Voice input is not available on this device.")
@@ -273,28 +312,17 @@ def start_listening(on_result):
         listener = _RecognitionListener(_safe_on_result)
 
         def _start():
-            # Destroy any previous recognizer, then wait briefly before
-            # creating a new one — recreating instantly disconnects
-            # Android's speech service (ERROR_SERVER_DISCONNECTED / code 11).
-            # Using Android's own Handler here (not Kivy's Clock) keeps
-            # everything on the UI thread, which SpeechRecognizer requires.
-            _destroy_current_recognizer()
+            try:
+                recognizer = SpeechRecognizer.createSpeechRecognizer(activity)
+                recognizer.setRecognitionListener(listener)
 
-            def _create_and_start():
-                try:
-                    recognizer = SpeechRecognizer.createSpeechRecognizer(activity)
-                    _current_recognizer[0] = recognizer
-                    recognizer.setRecognitionListener(listener)
+                intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toString())
 
-                    intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toString())
-
-                    recognizer.startListening(intent)
-                except Exception as e:
-                    _safe_on_result(None, f"Could not start voice input: {e}")
-
-            _main_handler.postDelayed(_UIRunnable(_create_and_start), 300)
+                recognizer.startListening(intent)
+            except Exception as e:
+                _safe_on_result(None, f"Could not start voice input: {e}")
 
         activity.runOnUiThread(_UIRunnable(_start))
 
