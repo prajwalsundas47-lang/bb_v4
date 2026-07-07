@@ -27,19 +27,19 @@ def open_app(app_name):
     if activity is None:
         return "Android launcher is not available."
 
-    package = APPS[app_name]
+    packages = APPS[app_name]
 
     try:
         pm = activity.getPackageManager()
 
-        intent = pm.getLaunchIntentForPackage(package)
+        for package in packages:
+            intent = pm.getLaunchIntentForPackage(package)
 
-        if intent is None:
-            return f"{app_name.title()} is not installed."
+            if intent is not None:
+                activity.startActivity(intent)
+                return f"📱 Opening {app_name.title()}..."
 
-        activity.startActivity(intent)
-
-        return f"📱 Opening {app_name.title()}..."
+        return f"{app_name.title()} is not installed."
 
     except Exception as e:
         return str(e)
