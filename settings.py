@@ -6,7 +6,14 @@ DEFAULT_SETTINGS = {
     "voice_enabled": True,
     "wake_word": "bb",
     "theme": "dark",
-    "default_city": ""
+    "default_city": "",
+    # AI brain (ai.py) — set via chat: "set anthropic_api_key to sk-ant-..."
+    "anthropic_api_key": "",
+    # ElevenLabs TTS (elevenlabs_tts.py) — set via chat:
+    # "set elevenlabs_api_key to YOUR_KEY"
+    "elevenlabs_api_key": "",
+    "elevenlabs_voice_id": "deZSq5evPFppexT3c7TY",
+    "elevenlabs_enabled": True
 }
 
 
