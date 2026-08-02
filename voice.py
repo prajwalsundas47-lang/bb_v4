@@ -5,7 +5,6 @@ except ImportError:
     ANDROID = False
 
 from kivy.clock import Clock
-from elevenlabs_tts import speak_elevenlabs
 
 
 _tts_engine = None
@@ -110,7 +109,7 @@ if ANDROID:
         @java_method("(I)V")
         def onError(self, error):
             try:
-                self.on_result(None, f"Recognition error (code {error}).", error)
+                self.on_result(None, f"Recognition error (code {error}).")
             except Exception:
                 pass
 
@@ -119,12 +118,12 @@ if ANDROID:
             try:
                 matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 if matches is not None and matches.size() > 0:
-                    self.on_result(matches.get(0), None, None)
+                    self.on_result(matches.get(0), None)
                 else:
-                    self.on_result(None, "No speech detected.", None)
+                    self.on_result(None, "No speech detected.")
             except Exception as e:
                 try:
-                    self.on_result(None, f"Could not read speech result: {e}", None)
+                    self.on_result(None, f"Could not read speech result: {e}")
                 except Exception:
                     pass
 
@@ -138,7 +137,7 @@ if ANDROID:
 
 
 def _init_tts():
-    """Lazily create the Android TTS engine the first time it's needed."""
+    """Lazily create the TTS engine the first time speak() is called."""
     global _tts_engine
 
     if not ANDROID or _tts_engine is not None:
@@ -146,11 +145,15 @@ def _init_tts():
 
     activity = PythonActivity.mActivity
     listener = _TTSInitListener()
-    _tts_init_listener_holder[0] = listener  # keep alive — see GC-safety note above
     _tts_engine = TextToSpeech(activity, listener)
 
 
-def _speak_android(text):
+def speak(text):
+    """
+    Speak text out loud using Android's built-in TTS engine.
+    Returns None on success, or a short status string if BB couldn't
+    speak yet (so the caller can show it in chat for debugging).
+    """
     if not ANDROID:
         return "Voice output is not available on this device."
 
@@ -170,82 +173,15 @@ def _speak_android(text):
         return f"Could not speak: {e}"
 
 
-def speak(text):
-    """
-    Speak text out loud. Tries ElevenLabs first (higher quality voice);
-    if no key is set or the request fails, transparently falls back to
-    Android's built-in TTS so BB never goes silent.
-
-    Returns None on success, or a short status string for debugging.
-    """
-    status = speak_elevenlabs(text)
-
-    if status is None:
-        return None  # ElevenLabs spoke successfully
-
-    if status != "NO_KEY":
-        # ElevenLabs was configured but failed (bad key/network) — still
-        # fall back, but keep the reason visible for debugging.
-        fallback_status = _speak_android(text)
-        return f"(ElevenLabs: {status}) " + (fallback_status or "")
-
-    return _speak_android(text)
-
-
-# ---------------------------------------------------------------------
-# Wake-word ("Hey BB") continuous listening
-#
-# Known issue: this loop has crashed at the native/JNI level on-device
-# under some conditions. Two changes here reduce (but can't fully
-# eliminate without a logcat trace) the chance of that happening:
-#
-#   1. A "busy" guard (_recognizer_busy) stops us from ever calling
-#      startListening() on a recognizer that's already mid-listen —
-#      double-starting a SpeechRecognizer is a common native crash
-#      trigger, especially on Samsung's speech stack.
-#   2. Exponential backoff + periodic recognizer recreation: instead of
-#      always retrying after a flat 400ms, delay grows on repeated
-#      errors, and after several consecutive errors the recognizer
-#      object itself is destroyed and rebuilt (some devices leak native
-#      state in the recognizer across many rapid cycles).
-#
-# If it still crashes the whole app (not just this feature), that's a
-# native crash Python's try/except cannot catch — the only way to see
-# the real cause is `adb logcat` at the moment of the crash.
-# ---------------------------------------------------------------------
-
-# --- GC-safety holders -------------------------------------------------
-# CRITICAL: every jnius PythonJavaClass instance (listeners, runnables)
-# MUST be kept referenced from Python for as long as Java might call back
-# into it. If the only reference is a local variable, CPython's garbage
-# collector can free the object while Java still holds a JNI reference to
-# it — the next callback then crashes the native process instantly with
-# SIGSEGV at fault addr 0x1. This is exactly what was happening here:
-# a brand-new _UIRunnable was created every wake-loop cycle and had
-# nothing keeping it alive between being scheduled and actually firing.
-_tts_init_listener_holder = [None]
-_wake_listener_holder = [None]
-_wake_create_runnable_holder = [None]
-_wake_restart_runnable_holder = [None]
-_wake_recreate_runnable_holder = [None]
-_oneshot_listener_holder = [None]
-_oneshot_runnable_holder = [None]
-# -------------------------------------------------------------------------
-
 _wake_active = [False]
 _wake_recognizer = [None]
-_recognizer_busy = [False]
-_error_streak = [0]
-
-_BASE_DELAY_MS = 400
-_MAX_DELAY_MS = 3000
-_RECREATE_AFTER_ERRORS = 4
+_wake_listener_ref = [None]  # MUST stay referenced — see crash notes below
+_one_shot_listener_ref = [None]  # same, for the MIC-button path
 
 
 def stop_always_listening():
     _wake_active[0] = False
-    _recognizer_busy[0] = False
-    _error_streak[0] = 0
+    _wake_listener_ref[0] = None
 
     if ANDROID and _wake_recognizer[0] is not None:
         recognizer = _wake_recognizer[0]
@@ -269,14 +205,20 @@ def stop_always_listening():
 
 def start_always_listening(on_wake_command):
     """
-    Continuously listens (while BB is open on screen) for 'hey bb'.
-    Anything spoken right after the wake phrase is passed to
-    on_wake_command as the command; if the phrase is said alone,
-    on_wake_command(None) is called instead.
+    Continuously listens in a loop (while BB is open on screen) for
+    'hey bb' in what's said. Anything spoken right after the wake
+    phrase is passed to on_wake_command as the command; if the wake
+    phrase is said alone, on_wake_command(None) is called instead.
 
-    Only runs while the BB app itself is open/foreground — surviving
-    minimize/lock needs a real background Android service (separate,
-    bigger project).
+    Unlike start_listening() (one-shot, used by the MIC button), this
+    creates a SINGLE SpeechRecognizer and reuses it for every cycle by
+    calling startListening() again after each result — the standard,
+    stable Android pattern.
+
+    Note: this only runs while the BB app itself is open/foreground.
+    Surviving the app being minimized or the screen locked needs a
+    real persistent Android background service — a separate, bigger
+    project.
     """
     if not ANDROID:
         on_wake_command(None)
@@ -286,53 +228,41 @@ def start_always_listening(on_wake_command):
         return
 
     _wake_active[0] = True
-    _error_streak[0] = 0
     activity = PythonActivity.mActivity
 
-    def _handle_result(text, error, error_code):
+    def _handle_result(text, error):
         if not _wake_active[0]:
             return
 
-        _recognizer_busy[0] = False
+        try:
+            if text:
+                lowered = text.lower()
+                command = None
 
-        if error:
-            _error_streak[0] += 1
-        else:
-            _error_streak[0] = 0
-            try:
-                if text:
-                    lowered = text.lower()
-                    command = None
+                for phrase in ("hey bb", "hey b b", "hey be be"):
+                    if phrase in lowered:
+                        idx = lowered.find(phrase) + len(phrase)
+                        command = text[idx:].strip()
+                        break
+                else:
+                    if lowered.startswith("bb "):
+                        command = text[3:].strip()
 
-                    for phrase in ("hey bb", "hey b b", "hey be be"):
-                        if phrase in lowered:
-                            idx = lowered.find(phrase) + len(phrase)
-                            command = text[idx:].strip()
-                            break
-                    else:
-                        if lowered.startswith("bb "):
-                            command = text[3:].strip()
+                if command is not None:
+                    on_wake_command(command if command else None)
+        except Exception:
+            pass
 
-                    if command is not None:
-                        on_wake_command(command if command else None)
-            except Exception:
-                pass
-
-        if not _wake_active[0]:
-            return
-
-        delay = min(_BASE_DELAY_MS * (_error_streak[0] + 1), _MAX_DELAY_MS)
-
-        # Reuse the SAME persistent runnable objects every cycle instead
-        # of creating a new one each time — see GC-safety note above.
-        if _error_streak[0] >= _RECREATE_AFTER_ERRORS:
-            _error_streak[0] = 0
-            _main_handler.postDelayed(_wake_recreate_runnable_holder[0], delay)
-        else:
-            _main_handler.postDelayed(_wake_restart_runnable_holder[0], delay)
+        if _wake_active[0]:
+            _main_handler.postDelayed(_UIRunnable(_restart_listening), 400)
 
     listener = _RecognitionListener(_handle_result)
-    _wake_listener_holder[0] = listener  # keep alive for the whole wake session
+    _wake_listener_ref[0] = listener  # CRITICAL: prevents Python GC from
+    # freeing this object while Java's SpeechRecognizer still holds a
+    # reference and calls back into it — confirmed root cause of the
+    # SIGSEGV null-pointer crash (via adb logcat: crash happened inside
+    # org.jnius.NativeInvocationHandler.invoke while Android's
+    # SpeechRecognizerImpl tried to deliver a callback).
 
     def _build_intent():
         intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
@@ -341,46 +271,23 @@ def start_always_listening(on_wake_command):
         return intent
 
     def _restart_listening():
-        if not _wake_active[0] or _wake_recognizer[0] is None or _recognizer_busy[0]:
+        if not _wake_active[0] or _wake_recognizer[0] is None:
             return
         try:
-            _recognizer_busy[0] = True
             _wake_recognizer[0].startListening(_build_intent())
         except Exception:
-            _recognizer_busy[0] = False
+            pass
 
     def _create_recognizer():
-        if not _wake_active[0]:
-            return
         try:
             recognizer = SpeechRecognizer.createSpeechRecognizer(activity)
-            recognizer.setRecognitionListener(_wake_listener_holder[0])
+            recognizer.setRecognitionListener(listener)
             _wake_recognizer[0] = recognizer
-            _recognizer_busy[0] = True
             recognizer.startListening(_build_intent())
         except Exception:
-            _recognizer_busy[0] = False
+            pass
 
-    def _recreate_recognizer():
-        if not _wake_active[0]:
-            return
-        old = _wake_recognizer[0]
-        _wake_recognizer[0] = None
-        _recognizer_busy[0] = False
-        if old is not None:
-            try:
-                old.destroy()
-            except Exception:
-                pass
-        _create_recognizer()
-
-    # Create each runnable exactly ONCE per wake session and hold a
-    # persistent reference — never build a fresh _UIRunnable per cycle.
-    _wake_create_runnable_holder[0] = _UIRunnable(_create_recognizer)
-    _wake_restart_runnable_holder[0] = _UIRunnable(_restart_listening)
-    _wake_recreate_runnable_holder[0] = _UIRunnable(_recreate_recognizer)
-
-    activity.runOnUiThread(_wake_create_runnable_holder[0])
+    activity.runOnUiThread(_UIRunnable(_create_recognizer))
 
 
 def start_listening(on_result):
@@ -396,7 +303,7 @@ def start_listening(on_result):
 
     result_given = [False]
 
-    def _safe_on_result(text, error, error_code=None):
+    def _safe_on_result(text, error):
         if result_given[0]:
             return
         result_given[0] = True
@@ -410,6 +317,7 @@ def start_listening(on_result):
             return
 
         listener = _RecognitionListener(_safe_on_result)
+        _one_shot_listener_ref[0] = listener  # keep alive until result arrives
 
         def _start():
             try:
