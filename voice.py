@@ -146,6 +146,7 @@ def _init_tts():
 
     activity = PythonActivity.mActivity
     listener = _TTSInitListener()
+    _tts_init_listener_holder[0] = listener  # keep alive — see GC-safety note above
     _tts_engine = TextToSpeech(activity, listener)
 
 
@@ -212,6 +213,24 @@ def speak(text):
 # native crash Python's try/except cannot catch — the only way to see
 # the real cause is `adb logcat` at the moment of the crash.
 # ---------------------------------------------------------------------
+
+# --- GC-safety holders -------------------------------------------------
+# CRITICAL: every jnius PythonJavaClass instance (listeners, runnables)
+# MUST be kept referenced from Python for as long as Java might call back
+# into it. If the only reference is a local variable, CPython's garbage
+# collector can free the object while Java still holds a JNI reference to
+# it — the next callback then crashes the native process instantly with
+# SIGSEGV at fault addr 0x1. This is exactly what was happening here:
+# a brand-new _UIRunnable was created every wake-loop cycle and had
+# nothing keeping it alive between being scheduled and actually firing.
+_tts_init_listener_holder = [None]
+_wake_listener_holder = [None]
+_wake_create_runnable_holder = [None]
+_wake_restart_runnable_holder = [None]
+_wake_recreate_runnable_holder = [None]
+_oneshot_listener_holder = [None]
+_oneshot_runnable_holder = [None]
+# -------------------------------------------------------------------------
 
 _wake_active = [False]
 _wake_recognizer = [None]
@@ -304,13 +323,16 @@ def start_always_listening(on_wake_command):
 
         delay = min(_BASE_DELAY_MS * (_error_streak[0] + 1), _MAX_DELAY_MS)
 
+        # Reuse the SAME persistent runnable objects every cycle instead
+        # of creating a new one each time — see GC-safety note above.
         if _error_streak[0] >= _RECREATE_AFTER_ERRORS:
             _error_streak[0] = 0
-            _main_handler.postDelayed(_UIRunnable(_recreate_recognizer), delay)
+            _main_handler.postDelayed(_wake_recreate_runnable_holder[0], delay)
         else:
-            _main_handler.postDelayed(_UIRunnable(_restart_listening), delay)
+            _main_handler.postDelayed(_wake_restart_runnable_holder[0], delay)
 
     listener = _RecognitionListener(_handle_result)
+    _wake_listener_holder[0] = listener  # keep alive for the whole wake session
 
     def _build_intent():
         intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
@@ -332,7 +354,7 @@ def start_always_listening(on_wake_command):
             return
         try:
             recognizer = SpeechRecognizer.createSpeechRecognizer(activity)
-            recognizer.setRecognitionListener(listener)
+            recognizer.setRecognitionListener(_wake_listener_holder[0])
             _wake_recognizer[0] = recognizer
             _recognizer_busy[0] = True
             recognizer.startListening(_build_intent())
@@ -352,7 +374,13 @@ def start_always_listening(on_wake_command):
                 pass
         _create_recognizer()
 
-    activity.runOnUiThread(_UIRunnable(_create_recognizer))
+    # Create each runnable exactly ONCE per wake session and hold a
+    # persistent reference — never build a fresh _UIRunnable per cycle.
+    _wake_create_runnable_holder[0] = _UIRunnable(_create_recognizer)
+    _wake_restart_runnable_holder[0] = _UIRunnable(_restart_listening)
+    _wake_recreate_runnable_holder[0] = _UIRunnable(_recreate_recognizer)
+
+    activity.runOnUiThread(_wake_create_runnable_holder[0])
 
 
 def start_listening(on_result):
