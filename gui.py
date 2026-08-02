@@ -28,10 +28,10 @@ TEXT_COLOR = (0.80, 0.95, 0.98, 1)
 Window.clearcolor = BG_COLOR
 
 STATE_COLORS = {
-    "idle": ACCENT,
-    "listening": LISTEN_COLOR,
-    "thinking": THINK_COLOR,
-    "speaking": ACCENT,
+    "idle": ACCENT[:3],
+    "listening": LISTEN_COLOR[:3],
+    "thinking": THINK_COLOR[:3],
+    "speaking": ACCENT[:3],
 }
 STATE_SPEED = {"idle": 1.0, "listening": 2.2, "thinking": 1.6, "speaking": 1.8}
 
