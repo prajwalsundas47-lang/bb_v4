@@ -349,13 +349,21 @@ class BBUI(BoxLayout):
             self.wake_btn.text = "WAKE: ON"
             self._append_chat("\n\n[color=2ad9f2]BB:[/color] 👂 Wake mode on — say 'Hey BB' any time.")
             self._set_status("WAKE MODE ACTIVE", "2ad9f2", "idle")
-            start_always_listening(self._on_wake_command)
+            start_always_listening(self._on_wake_command, self._on_wake_state)
         else:
             self._wake_on = False
             self.wake_btn.text = "WAKE: OFF"
             stop_always_listening()
             self._append_chat("\n\n[color=2ad9f2]BB:[/color] 👂 Wake mode off.")
             self._set_status("SYSTEM ONLINE", "2ad9f2", "idle")
+
+    def _on_wake_state(self, state):
+        def update(dt):
+            if not self._wake_on:
+                return
+            if state == "listening":
+                self._set_status("LISTENING FOR 'HEY BB'...", "ff4d6d", "listening")
+        Clock.schedule_once(update, 0)
 
     def _on_wake_command(self, command):
         def update(dt):
