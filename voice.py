@@ -4,7 +4,47 @@ try:
 except ImportError:
     ANDROID = False
 
+import difflib
 from kivy.clock import Clock
+
+
+# Android's speech recognizer very commonly mishears the short wake word
+# "bb" as a similar-sounding real word ("baby", "bebe", "abby", ...).
+# Matching only exact phrases (as before) meant wake mode silently failed
+# almost every time. Instead, fuzzy-match the word(s) right after a
+# greeting ("hey"/"hi"/"hello") against known variants.
+_WAKE_VARIANTS = ("bb", "b b", "be be", "baby", "bebe", "abby", "bebi", "beebee")
+_GREETING_WORDS = ("hey", "hi", "hello", "ok", "okay")
+
+
+def _match_wake_word(word):
+    word = word.strip(",.!?").lower()
+    if not word:
+        return False
+    for variant in _WAKE_VARIANTS:
+        if difflib.SequenceMatcher(None, word, variant).ratio() >= 0.6:
+            return True
+    return False
+
+
+def _extract_wake_command(text):
+    """
+    Returns the command text following a wake phrase, or None if no
+    wake phrase was detected anywhere in `text`.
+    """
+    words = text.lower().split()
+    if not words:
+        return None
+
+    if words[0] in _GREETING_WORDS and len(words) > 1:
+        if _match_wake_word(words[1]):
+            return " ".join(words[2:]).strip()
+        if len(words) > 2 and _match_wake_word(words[1] + words[2]):
+            return " ".join(words[3:]).strip()
+    elif _match_wake_word(words[0]):
+        return " ".join(words[1:]).strip()
+
+    return None
 
 
 _tts_engine = None
@@ -250,17 +290,7 @@ def start_always_listening(on_wake_command):
 
         try:
             if text:
-                lowered = text.lower()
-                command = None
-
-                for phrase in ("hey bb", "hey b b", "hey be be"):
-                    if phrase in lowered:
-                        idx = lowered.find(phrase) + len(phrase)
-                        command = text[idx:].strip()
-                        break
-                else:
-                    if lowered.startswith("bb "):
-                        command = text[3:].strip()
+                command = _extract_wake_command(text)
 
                 if command is not None:
                     on_wake_command(command if command else None)
