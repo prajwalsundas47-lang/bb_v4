@@ -136,6 +136,19 @@ if ANDROID:
             pass
 
 
+_pinned_runnables = []  # keeps EVERY runnable alive forever — cheap, avoids
+                         # the exact GC-crash pattern we just found for listeners
+
+
+def _make_runnable(func):
+    r = _UIRunnable(func)
+    _pinned_runnables.append(r)
+    return r
+
+
+_tts_listener_ref = [None]
+
+
 def _init_tts():
     """Lazily create the TTS engine the first time speak() is called."""
     global _tts_engine
@@ -145,6 +158,7 @@ def _init_tts():
 
     activity = PythonActivity.mActivity
     listener = _TTSInitListener()
+    _tts_listener_ref[0] = listener  # same GC-safety fix as the recognizer listeners
     _tts_engine = TextToSpeech(activity, listener)
 
 
@@ -198,7 +212,7 @@ def stop_always_listening():
                 pass
 
         try:
-            PythonActivity.mActivity.runOnUiThread(_UIRunnable(_stop))
+            PythonActivity.mActivity.runOnUiThread(_make_runnable(_stop))
         except Exception:
             pass
 
@@ -254,7 +268,7 @@ def start_always_listening(on_wake_command):
             pass
 
         if _wake_active[0]:
-            _main_handler.postDelayed(_UIRunnable(_restart_listening), 400)
+            _main_handler.postDelayed(_make_runnable(_restart_listening), 400)
 
     listener = _RecognitionListener(_handle_result)
     _wake_listener_ref[0] = listener  # CRITICAL: prevents Python GC from
@@ -287,7 +301,7 @@ def start_always_listening(on_wake_command):
         except Exception:
             pass
 
-    activity.runOnUiThread(_UIRunnable(_create_recognizer))
+    activity.runOnUiThread(_make_runnable(_create_recognizer))
 
 
 def start_listening(on_result):
@@ -332,7 +346,7 @@ def start_listening(on_result):
             except Exception as e:
                 _safe_on_result(None, f"Could not start voice input: {e}")
 
-        activity.runOnUiThread(_UIRunnable(_start))
+        activity.runOnUiThread(_make_runnable(_start))
 
         def _timeout_check(dt):
             _safe_on_result(
