@@ -231,11 +231,22 @@ _wake_active = [False]
 _wake_recognizer = [None]
 _wake_listener_ref = [None]  # MUST stay referenced — see crash notes below
 _one_shot_listener_ref = [None]  # same, for the MIC-button path
+_wake_state_callback = [None]  # optional: gui.py's HUD state updater
+
+
+def _notify_wake_state(state):
+    cb = _wake_state_callback[0]
+    if cb is not None:
+        try:
+            cb(state)
+        except Exception:
+            pass
 
 
 def stop_always_listening():
     _wake_active[0] = False
     _wake_listener_ref[0] = None
+    _wake_state_callback[0] = None
 
     if ANDROID and _wake_recognizer[0] is not None:
         recognizer = _wake_recognizer[0]
@@ -257,12 +268,17 @@ def stop_always_listening():
             pass
 
 
-def start_always_listening(on_wake_command):
+def start_always_listening(on_wake_command, on_state_change=None):
     """
     Continuously listens in a loop (while BB is open on screen) for
     'hey bb' in what's said. Anything spoken right after the wake
     phrase is passed to on_wake_command as the command; if the wake
     phrase is said alone, on_wake_command(None) is called instead.
+
+    on_state_change, if given, is called with "listening" each time a
+    fresh listen cycle actually starts (mic is live) — lets gui.py
+    drive the HUD's pulsing "listening" animation instead of sitting
+    on a static "wake mode active" state between cycles.
 
     Unlike start_listening() (one-shot, used by the MIC button), this
     creates a SINGLE SpeechRecognizer and reuses it for every cycle by
@@ -282,6 +298,7 @@ def start_always_listening(on_wake_command):
         return
 
     _wake_active[0] = True
+    _wake_state_callback[0] = on_state_change
     activity = PythonActivity.mActivity
 
     def _handle_result(text, error):
@@ -319,6 +336,7 @@ def start_always_listening(on_wake_command):
             return
         try:
             _wake_recognizer[0].startListening(_build_intent())
+            _notify_wake_state("listening")
         except Exception:
             pass
 
@@ -328,6 +346,7 @@ def start_always_listening(on_wake_command):
             recognizer.setRecognitionListener(listener)
             _wake_recognizer[0] = recognizer
             recognizer.startListening(_build_intent())
+            _notify_wake_state("listening")
         except Exception:
             pass
 
