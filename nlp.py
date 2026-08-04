@@ -71,6 +71,15 @@ def get_intent(text):
     elif text.startswith("open "):
         return "open_app"
 
+    elif text.startswith("update ") and " to " in text:
+        return "propose_update"
+  
+    elif text in ("apply update", "confirm update", "push update"):
+        return "apply_update"
+  
+    elif text in ("cancel update", "discard update"):
+        return "cancel_update"
+    
     # Fun / misc
     elif "joke" in text:
         return "joke"
