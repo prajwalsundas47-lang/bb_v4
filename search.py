@@ -29,7 +29,7 @@ def search_web(query):
         url = f"https://api.duckduckgo.com/?q={encoded}&format=json&no_html=1&skip_disambig=1"
 
         ctx = ssl.create_default_context(cafile=certifi.where())
-with urllib.request.urlopen(url, timeout=6, context=ctx) as response:
+        with urllib.request.urlopen(url, timeout=6, context=ctx) as response:
             data = json.loads(response.read().decode("utf-8"))
 
         abstract = data.get("AbstractText")
