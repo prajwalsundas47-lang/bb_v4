@@ -16,12 +16,24 @@ SYSTEM_PROMPT = (
     "narrate that you searched, just answer naturally."
 )
 
+# Rolling conversation history, kept in memory for the app session.
+# Each entry is {"role": "user"|"assistant", "content": "..."}.
+HISTORY = []
+MAX_TURNS = 6  # 6 messages = 3 user/assistant exchanges of context
+
+
+def clear_history():
+    """Wipe conversation memory — used by the 'new conversation' command."""
+    HISTORY.clear()
+
 
 def think(text):
     """
     Fallback responder used whenever BB doesn't recognize an intent
     through the normal rule-based system (nlp.py / commands.py).
-    Calls the Claude API for a natural-language reply.
+    Calls the Claude API for a natural-language reply, including the
+    last few exchanges so follow-ups like "what about tomorrow" resolve
+    correctly.
 
     Falls back to a canned response if no API key is set, and to a
     short error string if the request itself fails (bad key, no
@@ -38,12 +50,14 @@ def think(text):
         return ("I'm still learning that one, Boss. (No AI key set — say "
                  "\"set anthropic_api_key to YOUR_KEY\" to unlock smarter replies.)")
 
+    messages = HISTORY + [{"role": "user", "content": text}]
+
     try:
         payload = json.dumps({
             "model": MODEL,
             "max_tokens": 500,
             "system": SYSTEM_PROMPT,
-            "messages": [{"role": "user", "content": text}],
+            "messages": messages,
             "tools": [{
                 "type": "web_search_20250305",
                 "name": "web_search",
@@ -62,22 +76,22 @@ def think(text):
             method="POST"
         )
 
-        # Web search adds server-side round trips, so give it more time
-        # than a plain text-only reply needs.
         with urllib.request.urlopen(req, timeout=25) as response:
             data = json.loads(response.read().decode("utf-8"))
 
-        # When web_search is used, content mixes tool-use/tool-result
-        # blocks in with one or more "text" blocks — only the text
-        # blocks are the actual reply, so join all of them in order.
         reply_parts = [
             block["text"] for block in data.get("content", [])
             if block.get("type") == "text" and block.get("text")
         ]
-        if reply_parts:
-            return " ".join(reply_parts).strip()
+        reply = " ".join(reply_parts).strip() if reply_parts else "I'm still learning that one, Boss."
 
-        return "I'm still learning that one, Boss."
+        # Only commit to history on a real reply — not on canned fallbacks.
+        if reply_parts:
+            HISTORY.append({"role": "user", "content": text})
+            HISTORY.append({"role": "assistant", "content": reply})
+            del HISTORY[:-MAX_TURNS]  # keep only the most recent MAX_TURNS messages
+
+        return reply
 
     except urllib.error.HTTPError as e:
         if e.code == 401:
