@@ -65,6 +65,9 @@ def get_intent(text):
     elif text.startswith("what is"):
         return "recall"
 
+    elif text in ("new conversation", "forget our conversation", "clear conversation", "reset conversation"):
+        return "new_conversation"
+    
     elif text.startswith("open "):
         return "open_app"
 
