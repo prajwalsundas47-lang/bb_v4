@@ -8,7 +8,7 @@ from search import search_web
 from camera import open_camera
 from system import volume_up, volume_down, mute, flashlight_on, flashlight_off, open_wifi_settings, set_brightness
 from ai import clear_history
-
+from self_update import propose_update, apply_update, cancel_update
 
 def execute(intent, text):
 
@@ -21,6 +21,18 @@ def execute(intent, text):
     elif intent == "time":
         return datetime.datetime.now().strftime("%I:%M %p")
 
+    elif intent == "propose_update":
+        # "update ai.py to add a joke command" → filename="ai.py", instruction="add a joke command"
+        body = text.replace("update ", "", 1).strip()
+        filename, instruction = body.split(" to ", 1)
+        return propose_update(filename.strip(), instruction.strip())
+
+    elif intent == "apply_update":
+        return apply_update()
+
+    elif intent == "cancel_update":
+        return cancel_update()
+    
     elif intent == "date":
         return datetime.datetime.now().strftime("%d %B %Y")
 
