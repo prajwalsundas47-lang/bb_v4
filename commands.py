@@ -7,6 +7,7 @@ from settings import get_setting, set_setting
 from search import search_web
 from camera import open_camera
 from system import volume_up, volume_down, mute, flashlight_on, flashlight_off, open_wifi_settings, set_brightness
+from ai import clear_history
 
 
 def execute(intent, text):
@@ -27,6 +28,10 @@ def execute(intent, text):
         city = text.replace("weather", "", 1).strip()
         return get_weather(city)
 
+    elif intent == "new_conversation":
+        clear_history()
+        return "🧹 Fresh start — I've cleared our conversation."
+    
     elif intent == "search":
         query = text
         for prefix in ("search ", "google ", "look up "):
