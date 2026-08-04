@@ -2,9 +2,12 @@ try:
     import urllib.request
     import urllib.parse
     import json
+    import ssl
+    import certifi
     HAS_NET = True
 except ImportError:
     HAS_NET = False
+
 
 
 def search_web(query):
@@ -25,7 +28,8 @@ def search_web(query):
         encoded = urllib.parse.quote(query)
         url = f"https://api.duckduckgo.com/?q={encoded}&format=json&no_html=1&skip_disambig=1"
 
-        with urllib.request.urlopen(url, timeout=6) as response:
+        ctx = ssl.create_default_context(cafile=certifi.where())
+with urllib.request.urlopen(url, timeout=6, context=ctx) as response:
             data = json.loads(response.read().decode("utf-8"))
 
         abstract = data.get("AbstractText")
