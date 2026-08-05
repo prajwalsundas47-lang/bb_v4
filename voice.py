@@ -408,3 +408,44 @@ def start_listening(on_result):
 
     except Exception as e:
         _safe_on_result(None, f"Could not start voice input: {e}")
+
+_conversation_active = [False]
+
+
+def start_conversation_mode(on_turn, on_state_change=None):
+    """
+    True back-and-forth voice conversation: after the wake word starts
+    it, BB listens, you speak, it replies (spoken), then IMMEDIATELY
+    listens again — no repeated wake word needed — until you say
+    "stop conversation" / "that's all" / 10s of silence.
+    on_turn(text) is called with what was heard each turn.
+    """
+    if not ANDROID:
+        return
+    _conversation_active[0] = True
+    _listen_next_turn(on_turn, on_state_change)
+
+
+def _listen_next_turn(on_turn, on_state_change):
+    if not _conversation_active[0]:
+        return
+
+    def _on_result(text, error):
+        if not _conversation_active[0]:
+            return
+        if text:
+            if text.lower().strip() in ("stop conversation", "that's all", "stop listening", "end conversation"):
+                stop_conversation_mode()
+                return
+            on_turn(text)
+        # Whether it heard something or timed out, keep the loop going
+        # until the user explicitly stops it.
+        _listen_next_turn(on_turn, on_state_change)
+
+    start_listening(_on_result)
+    if on_state_change:
+        on_state_change("listening")
+
+
+def stop_conversation_mode():
+    _conversation_active[0] = False
