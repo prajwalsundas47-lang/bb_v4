@@ -165,6 +165,4 @@ def execute(intent, text):
         return search_wikipedia(query)
 
     elif intent == "start_conversation":
-        start_conversation_mode(lambda t: print(t))  # gui.py should pass its own handler
-        return "🎙️ Conversation mode on — talk to me freely, say 'stop conversation' when done."    
-    return "Sorry Boss, I didn't understand."
+        return "__START_CONVERSATION__"
