@@ -9,6 +9,9 @@ from camera import open_camera
 from system import volume_up, volume_down, mute, flashlight_on, flashlight_off, open_wifi_settings, set_brightness
 from ai import clear_history
 from self_update import propose_update, apply_update, cancel_update
+from math_solver import solve_math
+from wikipedia import search_wikipedia
+from voice import start_conversation_mode
 
 def execute(intent, text):
 
@@ -154,4 +157,14 @@ def execute(intent, text):
     elif intent == "exit":
         return "Goodbye Boss! 👋"
 
+    elif intent == "advanced_math":
+        return solve_math(text)
+
+    elif intent == "wikipedia":
+        query = text.replace("wikipedia", "", 1).strip()
+        return search_wikipedia(query)
+
+    elif intent == "start_conversation":
+        start_conversation_mode(lambda t: print(t))  # gui.py should pass its own handler
+        return "🎙️ Conversation mode on — talk to me freely, say 'stop conversation' when done."    
     return "Sorry Boss, I didn't understand."
