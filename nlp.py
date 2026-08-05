@@ -15,9 +15,8 @@ def get_intent(text):
         return "time"
 
     # Date
-    elif "date" in text:
-        return "date"
-
+    elif text == "date" or (text.startswith("what") and "date" in text):
+    return "date"
     # Weather
     elif "weather" in text:
         return "weather"
