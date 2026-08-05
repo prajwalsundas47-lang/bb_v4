@@ -91,5 +91,14 @@ def get_intent(text):
 
     if text and all(ch in allowed for ch in text):
         return "calculate"
+    elif text.startswith("derivative") or text.startswith("differentiate") or \
+         text.startswith("integral") or text.startswith("integrate") or \
+         text.startswith("limit of") or text.startswith("solve "):
+        return "advanced_math"
 
+    elif text.startswith("wikipedia") or text.startswith("what is") and "wikipedia" in text:
+        return "wikipedia"
+
+    elif text in ("start conversation", "let's talk", "talk mode"):
+        return "start_conversation"
     return "unknown"
