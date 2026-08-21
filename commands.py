@@ -12,7 +12,7 @@ from self_update import propose_update, apply_update, cancel_update
 from math_solver import solve_math
 from wikipedia import search_wikipedia
 from voice import start_conversation_mode
-
+from screen_recorder_control import start_recording, stop_recording, is_recording
 def execute(intent, text):
 
     if intent == "greeting":
@@ -163,6 +163,18 @@ def execute(intent, text):
     elif intent == "wikipedia":
         query = text.replace("wikipedia", "", 1).strip()
         return search_wikipedia(query)
+
+    elif intent == "start_recording":
+        if is_recording():
+            return "Already recording, Boss."
+        start_recording(on_error=lambda msg: print(msg))
+        return "🎬 Requesting screen capture permission — tap 'Start now' on the dialog."
+
+    elif intent == "stop_recording":
+        if not is_recording():
+            return "Nothing's currently recording."
+        stop_recording()
+        return "⏹️ Recording stopped and saved."
 
     elif intent == "start_conversation":
         return "__START_CONVERSATION__"
