@@ -107,7 +107,10 @@ def propose_update(filename, instruction):
     new_lines = new_content.count("\n")
     return (f"🧠 I've drafted the change to {filename} ({old_lines} → "
             f"{new_lines} lines). Say \"apply update\" to push it to a "
-            f"review branch, or \"cancel update\" to discard it.")def apply_update():
+            f"review branch, or \"cancel update\" to discard it.")
+    
+    
+    def apply_update():
     """Step 2: push the pending draft to a new branch (never main)."""
     if not _pending["path"]:
         return "There's no pending update to apply."
