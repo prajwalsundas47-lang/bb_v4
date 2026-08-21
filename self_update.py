@@ -111,8 +111,8 @@ def propose_update(filename, instruction):
     
     
     def apply_update():
-    """Step 2: push the pending draft to a new branch (never main)."""
-    if not _pending["path"]:
+      """Step 2: push the pending draft to a new branch (never main)."""
+      if not _pending["path"]:
         return "There's no pending update to apply."
 
     repo = get_setting("github_repo")
