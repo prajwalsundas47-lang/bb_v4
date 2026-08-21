@@ -166,8 +166,9 @@ def execute(intent, text):
 
     elif intent == "start_recording":
         if is_recording():
-            return "Already recording, Boss."
-        start_recording(on_error=lambda msg: print(msg))
+        return "Already recording, Boss."
+        from bb_notify import notify
+        start_recording(on_error=lambda msg: notify(f"⚠️ {msg}"))
         return "🎬 Requesting screen capture permission — tap 'Start now' on the dialog."
 
     elif intent == "stop_recording":
