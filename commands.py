@@ -166,5 +166,4 @@ def execute(intent, text):
 
     elif intent == "start_conversation":
         return "__START_CONVERSATION__"
-
-       return "Sorry Boss, I didn't understand."
+    return "Sorry Boss, I didn't understand."
