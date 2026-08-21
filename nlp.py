@@ -1,3 +1,13 @@
+def _has_fuzzy_word(text, target, threshold=0.75):
+    """True if any word in text is a close match to target (handles typos
+    like 'revord' for 'record')."""
+    import difflib
+    for word in text.split():
+        if difflib.SequenceMatcher(None, word, target).ratio() >= threshold:
+            return True
+    return False
+
+
 def get_intent(text):
     text = text.lower().strip()
     words = text.split()
@@ -13,10 +23,10 @@ def get_intent(text):
     # Time
     elif "time" in text:
         return "time"
-    elif text in ("start recording", "record my screen", "start screen recording"):
-        return "start_recording"
-    elif text in ("stop recording", "stop screen recording"):
+    elif "stop" in text and (_has_fuzzy_word(text, "record") or _has_fuzzy_word(text, "recording")):
         return "stop_recording"
+    elif _has_fuzzy_word(text, "record") or _has_fuzzy_word(text, "recording"):
+        return "start_recording"
     # Date
     elif text == "date" or (text.startswith("what") and "date" in text):
          return "date"
