@@ -13,7 +13,10 @@ def get_intent(text):
     # Time
     elif "time" in text:
         return "time"
-
+    elif text in ("start recording", "record my screen", "start screen recording"):
+        return "start_recording"
+    elif text in ("stop recording", "stop screen recording"):
+        return "stop_recording"
     # Date
     elif text == "date" or (text.startswith("what") and "date" in text):
          return "date"
