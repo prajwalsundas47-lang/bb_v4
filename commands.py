@@ -165,8 +165,8 @@ def execute(intent, text):
         return search_wikipedia(query)
 
     elif intent == "start_recording":
-        if is_recording():
-        return "Already recording, Boss."
+       if is_recording():
+           return "Already recording, Boss."
         from bb_notify import notify
         start_recording(on_error=lambda msg: notify(f"⚠️ {msg}"))
         return "🎬 Requesting screen capture permission — tap 'Start now' on the dialog."
