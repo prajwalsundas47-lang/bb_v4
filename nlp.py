@@ -16,7 +16,7 @@ def get_intent(text):
 
     # Date
     elif text == "date" or (text.startswith("what") and "date" in text):
-    return "date"
+         return "date"
     # Weather
     elif "weather" in text:
         return "weather"
@@ -61,6 +61,9 @@ def get_intent(text):
     elif text.startswith("forget "):
         return "forget"
 
+    elif text.startswith("wikipedia") or (text.startswith("what is") and "wikipedia" in text):
+        return "wikipedia"
+
     elif text.startswith("what is"):
         return "recall"
 
@@ -95,9 +98,6 @@ def get_intent(text):
          text.startswith("integral") or text.startswith("integrate") or \
          text.startswith("limit of") or text.startswith("solve "):
         return "advanced_math"
-
-    elif text.startswith("wikipedia") or text.startswith("what is") and "wikipedia" in text:
-        return "wikipedia"
 
     elif text in ("start conversation", "let's talk", "talk mode"):
         return "start_conversation"
