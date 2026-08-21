@@ -7,6 +7,15 @@ except ImportError:
 import difflib
 from kivy.clock import Clock
 
+try:
+    from settings import get_setting, set_setting
+except Exception:
+    def get_setting(key, default=None):
+        return default
+
+    def set_setting(key, value):
+        pass
+
 
 # Android's speech recognizer very commonly mishears the short wake word
 # "bb" as a similar-sounding real word ("baby", "bebe", "abby", ...).
@@ -76,19 +85,7 @@ if ANDROID:
             try:
                 if status == 0:  # TextToSpeech.SUCCESS
                     _tts_engine.setLanguage(Locale.US)
-
-                    try:
-                        voices = _tts_engine.getVoices()
-                        if voices is not None:
-                            iterator = voices.iterator()
-                            while iterator.hasNext():
-                                voice = iterator.next()
-                                name = voice.getName().lower()
-                                if "female" in name:
-                                    _tts_engine.setVoice(voice)
-                                    break
-                    except Exception:
-                        pass
+                    _apply_saved_voice_or_default()
 
                     _tts_ready = True
 
@@ -187,6 +184,86 @@ def _make_runnable(func):
 
 
 _tts_listener_ref = [None]
+
+
+def _apply_saved_voice_or_default():
+    """Called once TTS is ready: use the voice name saved via set_voice(),
+    if any and it's still installed on this device; otherwise fall back
+    to picking any voice with 'female' in its name (previous behavior)."""
+    try:
+        voices = _tts_engine.getVoices()
+        if voices is None:
+            return
+
+        saved = get_setting("tts_voice_name")
+        if saved:
+            iterator = voices.iterator()
+            while iterator.hasNext():
+                voice = iterator.next()
+                if voice.getName() == saved:
+                    _tts_engine.setVoice(voice)
+                    return
+            # saved voice no longer exists on this device — fall through
+            # to the default heuristic below instead of silently failing
+
+        iterator = voices.iterator()
+        while iterator.hasNext():
+            voice = iterator.next()
+            if "female" in voice.getName().lower():
+                _tts_engine.setVoice(voice)
+                return
+    except Exception:
+        pass
+
+
+def list_voices():
+    """
+    Returns a list of available voice name strings on this device (only
+    once TTS is ready — call speak() once first if you get an empty
+    list back). Use one of these names with set_voice().
+    """
+    if not ANDROID or _tts_engine is None or not _tts_ready:
+        return []
+
+    names = []
+    try:
+        voices = _tts_engine.getVoices()
+        if voices is not None:
+            iterator = voices.iterator()
+            while iterator.hasNext():
+                names.append(iterator.next().getName())
+    except Exception:
+        pass
+    return sorted(names)
+
+
+def set_voice(name):
+    """
+    Switch to a specific installed voice by its exact name (see
+    list_voices() for valid names) and remember the choice for future
+    app launches. Returns None on success, or a status string.
+    """
+    if not ANDROID:
+        return "Voice output is not available on this device."
+    if _tts_engine is None or not _tts_ready:
+        return "🔇 Voice engine still starting — try again in a moment."
+
+    try:
+        voices = _tts_engine.getVoices()
+        if voices is None:
+            return "No voices available to choose from."
+
+        iterator = voices.iterator()
+        while iterator.hasNext():
+            voice = iterator.next()
+            if voice.getName() == name:
+                _tts_engine.setVoice(voice)
+                set_setting("tts_voice_name", name)
+                return None
+
+        return f"No voice named '{name}' found. Use list_voices() to see options."
+    except Exception as e:
+        return f"Could not set voice: {e}"
 
 
 def _init_tts():
