@@ -84,14 +84,11 @@ def propose_update(filename, instruction):
         },
         method="POST"
     )
-   
+
     ctx = ssl.create_default_context(cafile=certifi.where())
 
     try:
         with urllib.request.urlopen(req, timeout=30, context=ctx) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         new_content = "".join(
             b["text"] for b in data.get("content", []) if b.get("type") == "text"
@@ -110,10 +107,7 @@ def propose_update(filename, instruction):
     new_lines = new_content.count("\n")
     return (f"🧠 I've drafted the change to {filename} ({old_lines} → "
             f"{new_lines} lines). Say \"apply update\" to push it to a "
-            f"review branch, or \"cancel update\" to discard it.")
-
-
-def apply_update():
+            f"review branch, or \"cancel update\" to discard it.")def apply_update():
     """Step 2: push the pending draft to a new branch (never main)."""
     if not _pending["path"]:
         return "There's no pending update to apply."
