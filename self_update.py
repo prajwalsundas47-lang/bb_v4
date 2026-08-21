@@ -119,7 +119,6 @@ def propose_update(filename, instruction):
     filename = _pending["path"]
 
     try:
-        _, main_ref = _gh_request(f"{GITHUB_API}/repos/{repo}/git/ref/heads/main"), None
         main_sha = _gh_request(f"{GITHUB_API}/repos/{repo}/git/ref/heads/main")["object"]["sha"]
 
         branch_name = f"bb-self-update-{filename.replace('/', '-').replace('.py', '')}"
