@@ -84,7 +84,12 @@ def propose_update(filename, instruction):
         },
         method="POST"
     )
+   
+    ctx = ssl.create_default_context(cafile=certifi.where())
 
+    try:
+        with urllib.request.urlopen(req, timeout=30, context=ctx) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             data = json.loads(resp.read().decode("utf-8"))
