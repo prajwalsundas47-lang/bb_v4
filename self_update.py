@@ -110,8 +110,8 @@ def propose_update(filename, instruction):
             f"review branch, or \"cancel update\" to discard it.")
     
     
-    def apply_update():
-      """Step 2: push the pending draft to a new branch (never main)."""
+def apply_update():
+    """Step 2: push the pending draft to a new branch (never main)."""
       if not _pending["path"]:
         return "There's no pending update to apply."
 
