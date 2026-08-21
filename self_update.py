@@ -8,6 +8,8 @@ Setup (no code changes needed):
     "set github_repo to prajwalsundas47-lang/bb_v4"
 """
 
+import ssl
+import certifi
 import json
 import base64
 import urllib.request
@@ -30,8 +32,9 @@ def _gh_request(url, method="GET", data=None):
     }
     body = json.dumps(data).encode("utf-8") if data else None
     req = urllib.request.Request(url, data=body, headers=headers, method=method)
-    with urllib.request.urlopen(req, timeout=20) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    with urllib.request.urlopen(req, timeout=20, context=ctx) as resp:
+      return json.loads(resp.read().decode("utf-8"))
 
 
 def _get_file(repo, path, branch="main"):
