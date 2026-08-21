@@ -15,7 +15,7 @@ from kivy.graphics import Color, Rectangle, Ellipse, Line, PushMatrix, PopMatrix
 from kivy.clock import Clock
 from settings import get_setting
 from voice import speak, start_listening, start_always_listening, stop_always_listening
-
+from bb_notify import register as register_notifier
 # --- Futuristic dark theme palette ---
 BG_COLOR = (0.02, 0.03, 0.05, 1)
 ACCENT = (0.16, 0.85, 0.95, 1)          # electric cyan — idle / speaking
@@ -48,6 +48,19 @@ class GlowButton(Button):
             bold=True,
             **kwargs
         )
+
+
+...
+class BBUI(BoxLayout):
+    def __init__(self, callback, **kwargs):
+        ...
+        register_notifier(self._on_async_notify)
+
+    def _on_async_notify(self, msg):
+        def update(dt):
+            self._append_chat(f"\n\n[color=2ad9f2]BB:[/color] {msg}")
+            self._set_status("SYSTEM ONLINE", "2ad9f2", "idle")
+        Clock.schedule_once(update, 0)
 
 
 class HUDCore(Widget):
