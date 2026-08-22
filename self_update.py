@@ -16,6 +16,7 @@ import urllib.request
 import urllib.error
 from settings import get_setting
 from ai import API_URL, MODEL  # reuse existing Claude wiring
+import certifi
 
 GITHUB_API = "https://api.github.com"
 
@@ -85,7 +86,12 @@ def propose_update(filename, instruction):
         method="POST"
     )
 
-    ctx = ssl.create_default_context(cafile=certifi.where())
+    def _ssl_context():
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    ctx.load_verify_locations(cafile=certifi.where())
+    ctx.check_hostname = True
+    ctx.verify_mode = ssl.CERT_REQUIRED
+    return ctx
 
     try:
         with urllib.request.urlopen(req, timeout=30, context=ctx) as resp:
