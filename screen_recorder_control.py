@@ -22,6 +22,10 @@ _is_recording = [False]
 SERVICE_CLASS_NAME = "org.bb.bbv4.ServiceRecordingservice"
 
 
+def is_recording():
+    return _is_recording[0]
+
+
 def start_recording(on_error=None, on_success=None):
     from android import activity as android_activity
 
@@ -90,4 +94,10 @@ def _start_service(result_code, projection_data, settings):
 def stop_recording():
     activity = PythonActivity.mActivity
     stop_intent = Intent(notif.ACTION_STOP)
-    stop_inte
+    activity.sendBroadcast(stop_intent)
+
+    ServiceClass = autoclass(SERVICE_CLASS_NAME)
+    service_intent = Intent(activity, ServiceClass)
+    activity.stopService(service_intent)
+
+    _is_recording[0] = False
