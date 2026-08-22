@@ -91,7 +91,9 @@ def propose_update(filename, instruction):
     ctx.load_verify_locations(cafile=certifi.where())
     ctx.check_hostname = True
     ctx.verify_mode = ssl.CERT_REQUIRED
-    return ctx
+
+    try:
+        with urllib.request.urlopen(req, timeout=30, context=ctx) as resp:
 
     try:
         with urllib.request.urlopen(req, timeout=30, context=ctx) as resp:
