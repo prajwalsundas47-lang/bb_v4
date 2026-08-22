@@ -16,13 +16,20 @@ import urllib.request
 import urllib.error
 from settings import get_setting
 from ai import API_URL, MODEL  # reuse existing Claude wiring
-import certifi
 
 GITHUB_API = "https://api.github.com"
 
 # Holds the most recently proposed (not-yet-applied) update so a follow-up
 # "apply update" / "cancel update" command knows what it's acting on.
 _pending = {"path": None, "content": None, "instruction": None}
+
+
+def _ssl_context():
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    ctx.load_verify_locations(cafile=certifi.where())
+    ctx.check_hostname = True
+    ctx.verify_mode = ssl.CERT_REQUIRED
+    return ctx
 
 
 def _gh_request(url, method="GET", data=None):
@@ -35,7 +42,7 @@ def _gh_request(url, method="GET", data=None):
     req = urllib.request.Request(url, data=body, headers=headers, method=method)
     ctx = ssl.create_default_context(cafile=certifi.where())
     with urllib.request.urlopen(req, timeout=20, context=ctx) as resp:
-      return json.loads(resp.read().decode("utf-8"))
+        return json.loads(resp.read().decode("utf-8"))
 
 
 def _get_file(repo, path, branch="main"):
@@ -86,14 +93,7 @@ def propose_update(filename, instruction):
         method="POST"
     )
 
-    def _ssl_context():
-    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    ctx.load_verify_locations(cafile=certifi.where())
-    ctx.check_hostname = True
-    ctx.verify_mode = ssl.CERT_REQUIRED
-
-    try:
-        with urllib.request.urlopen(req, timeout=30, context=ctx) as resp:
+    ctx = _ssl_context()
 
     try:
         with urllib.request.urlopen(req, timeout=30, context=ctx) as resp:
@@ -116,12 +116,12 @@ def propose_update(filename, instruction):
     return (f"🧠 I've drafted the change to {filename} ({old_lines} → "
             f"{new_lines} lines). Say \"apply update\" to push it to a "
             f"review branch, or \"cancel update\" to discard it.")
-    
-    
+
+
 def apply_update():
     """Step 2: push the pending draft to a new branch (never main)."""
     if not _pending["path"]:
-         return "There's no pending update to apply."
+        return "There's no pending update to apply."
 
     repo = get_setting("github_repo")
     filename = _pending["path"]
