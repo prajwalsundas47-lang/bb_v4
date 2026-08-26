@@ -3,7 +3,7 @@ from kivy.app import App
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 import re
-import bb_notify
+
 
 
 _EMOJI_PATTERN = re.compile(
