@@ -6,7 +6,7 @@ instead of a separate Kivy App class.
 DIAGNOSTIC VERSION: reports every step via on_error/on_success so we can
 see exactly where the flow stops.
 """
-from jnius import autoclass
+from jnius import autoclass, cast
 from recording_settings import RecordingSettings
 import notification_helper as notif
 
@@ -76,7 +76,7 @@ def _start_service(result_code, projection_data, settings):
     ServiceClass = autoclass(SERVICE_CLASS_NAME)
     service_intent = Intent(activity, ServiceClass)
     service_intent.putExtra("projection_result_code", result_code)
-    service_intent.putExtra("projection_result_data", projection_data)
+    service_intent.putExtra("projection_result_data", cast('android.os.Parcelable', projection_data))
     service_intent.putExtra("width", settings.width)
     service_intent.putExtra("height", settings.height)
     service_intent.putExtra("fps", settings.fps)
