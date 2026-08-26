@@ -75,17 +75,7 @@ class HUDCore(Widget):
     drive color + animation speed.
     """
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.state = "idle"
-        self._t = 0.0
-        self._particles = [
-            {"angle": random.uniform(0, 360), "speed": random.uniform(6, 18), "r_offset": random.uniform(-10, 10)}
-            for _ in range(14)
-        ]
-        self._wave_levels = [0.15] * 24
-        self.bind(pos=self._redraw, size=self._redraw)
-        Clock.schedule_interval(self._tick, 1 / 30.)
+    
 
     def set_state(self, state):
         self.state = state
@@ -278,6 +268,7 @@ class BBUI(BoxLayout):
         buttons.add_widget(self.wake_btn)
 
         self.add_widget(buttons)
+        register_notifier(self._on_async_notify)
 
     def _update_bg(self, *args):
         self._bg_rect.pos = self.pos
@@ -294,6 +285,11 @@ class BBUI(BoxLayout):
         self.chat.height = self.chat.texture_size[1]
         Clock.schedule_once(lambda dt: setattr(self.chat_scroll, "scroll_y", 0), 0)
 
+    def _on_async_notify(self, msg):
+        def update(dt):
+            self._append_chat(f"\n\n[color=2ad9f2]BB:[/color] {msg}")
+            self._set_status("SYSTEM ONLINE", "2ad9f2", "idle")
+        Clock.schedule_once(update, 0)
     def _append_chat(self, text):
         self.chat.text += text
 
