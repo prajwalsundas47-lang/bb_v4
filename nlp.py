@@ -23,10 +23,25 @@ def get_intent(text):
     # Time
     elif "time" in text:
         return "time"
+
+    # Self-update commands — MUST come before the recording checks below,
+    # otherwise words like "is_recording" or "recorder" inside a filename
+    # or instruction get fuzzy-matched to the recording intents first.
+    elif text.startswith("update ") and " to " in text:
+        return "propose_update"
+
+    elif text in ("apply update", "confirm update", "push update"):
+        return "apply_update"
+
+    elif text in ("cancel update", "discard update"):
+        return "cancel_update"
+
+    # Recording
     elif "stop" in text and (_has_fuzzy_word(text, "record") or _has_fuzzy_word(text, "recording")):
         return "stop_recording"
     elif _has_fuzzy_word(text, "record") or _has_fuzzy_word(text, "recording"):
         return "start_recording"
+
     # Date
     elif text == "date" or (text.startswith("what") and "date" in text):
          return "date"
@@ -82,19 +97,10 @@ def get_intent(text):
 
     elif text in ("new conversation", "forget our conversation", "clear conversation", "reset conversation"):
         return "new_conversation"
-    
+
     elif text.startswith("open "):
         return "open_app"
 
-    elif text.startswith("update ") and " to " in text:
-        return "propose_update"
-  
-    elif text in ("apply update", "confirm update", "push update"):
-        return "apply_update"
-  
-    elif text in ("cancel update", "discard update"):
-        return "cancel_update"
-    
     # Fun / misc
     elif "joke" in text:
         return "joke"
