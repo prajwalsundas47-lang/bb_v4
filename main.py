@@ -2,7 +2,18 @@ import traceback
 from kivy.app import App
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
+import re
 
+_EMOJI_PATTERN = re.compile(
+    "["
+    "\U0001F300-\U0001FAFF"
+    "\U00002600-\U000027BF"
+    "\U0001F000-\U0001F0FF"
+    "]+", flags=re.UNICODE
+)
+
+def sanitize_for_display(text):
+    return _EMOJI_PATTERN.sub("", text).strip()
 
 def _build_error_screen(message):
     scroll = ScrollView()
