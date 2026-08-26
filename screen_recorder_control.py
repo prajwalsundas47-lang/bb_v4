@@ -32,10 +32,12 @@ def start_recording(on_error=None, on_success=None):
     if on_error:
         on_error("DIAG: start_recording called")
 
+    def handler(*a):
+        android_activity.unbind(on_activity_result=handler)
+        _on_activity_result(*a, on_error=on_error, on_success=on_success)
+
     _pending_settings[0] = RecordingSettings()
-    android_activity.bind(
-        on_activity_result=lambda *a: _on_activity_result(*a, on_error=on_error, on_success=on_success)
-    )
+    android_activity.bind(on_activity_result=handler)
 
     try:
         activity = PythonActivity.mActivity
