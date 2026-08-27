@@ -22,7 +22,7 @@ android.accept_sdk_license = True
 
 android.add_src = src
 android.add_resources = res
-android.extra_manifest_application_arguments = ./extra_manifest_application.xml
+android.extra_manifest_application_arguments = src/res/xml/extra_manifest_application.xml
 
 [buildozer]
 log_level = 2
