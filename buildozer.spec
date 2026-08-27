@@ -19,9 +19,8 @@ android.minapi = 29
 android.archs = arm64-v8a
 
 android.accept_sdk_license = True
-
+android.add_resources = src/res:
 android.add_src = src
-android.add_resources = res
 android.extra_manifest_application_arguments = src/res/xml/extra_manifest_application.xml
 
 [buildozer]
