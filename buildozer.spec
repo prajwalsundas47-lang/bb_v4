@@ -24,5 +24,5 @@ android.add_src = src
 android.extra_manifest_application_arguments = manifest_snippets/extra_manifest_application.xml
 
 [buildozer]
-log_level = 2
+log_level = 3
 warn_on_root = 1
