@@ -21,7 +21,7 @@ android.archs = arm64-v8a
 android.accept_sdk_license = True
 android.add_resources = src/res:
 android.add_src = src
-android.extra_manifest_application_arguments = src/res/xml/extra_manifest_application.xml
+android.extra_manifest_application_arguments = <service android:name="org.bb.bbv4.BBAccessibilityService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true" android:label="BB Assistant"><intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter><meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service_config" /></service>
 
 [buildozer]
 log_level = 2
