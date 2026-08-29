@@ -1,6 +1,5 @@
-try:
-    from jnius import autoclass
-
+try:    
+    from jnius import autoclass, cast
     PythonActivity = autoclass("org.kivy.android.PythonActivity")
     Intent = autoclass("android.content.Intent")
     MediaStore = autoclass("android.provider.MediaStore")
@@ -8,7 +7,18 @@ try:
 except Exception:
     ANDROID = False
 
+def ensure_camera_permission():
+    PythonActivity = autoclass('org.kivy.android.PythonActivity')
+    Manifest = autoclass('android.Manifest$permission')
+    ContextCompat = autoclass('androidx.core.content.ContextCompat')
+    ActivityCompat = autoclass('androidx.core.app.ActivityCompat')
 
+    activity = PythonActivity.mActivity
+    perm = Manifest.CAMERA
+    if ContextCompat.checkSelfPermission(activity, perm) != 0:  # 0 = PERMISSION_GRANTED
+        ActivityCompat.requestPermissions(activity, [perm], 101)
+        return False
+    return True
 def open_camera():
     """
     Launches the phone's camera app directly in photo-capture mode.
@@ -25,3 +35,4 @@ def open_camera():
         return "📷 Opening camera..."
     except Exception as e:
         return f"Could not open camera: {e}"
+ 
