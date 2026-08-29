@@ -19,7 +19,7 @@ MEDIA_PROJECTION_REQUEST_CODE = 4200
 _pending_settings = [None]
 _is_recording = [False]
 
-SERVICE_CLASS_NAME = "org.bb.bbv4.ServiceRecordingservice"
+SERVICE_CLASS_NAME = "org.bb.bbv4.ServiceRecordingService"
 
 
 def is_recording():
