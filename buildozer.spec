@@ -21,7 +21,7 @@ android.archs = arm64-v8a
 android.accept_sdk_license = True
 android.add_resources = src/res:
 android.add_src = src
-android.manifest_template = src/templates/AndroidManifest.tmpl.xml
+p4a.hook = p4a_hook.py
 
 [buildozer]
 log_level = 3
