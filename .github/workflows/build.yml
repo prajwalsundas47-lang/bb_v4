@@ -34,7 +34,10 @@ jobs:
       - name: Build APK with Buildozer
         run: |
           yes | buildozer android debug
-
+      - name: Dump generated AndroidManifest.xml on failure
+        if: failure()
+        run: cat .buildozer/android/platform/build-arm64-v8a/dists/bbv4/src/main/AndroidManifest.xml
+      
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
