@@ -9,7 +9,8 @@ see exactly where the flow stops.
 from jnius import autoclass, cast
 from recording_settings import RecordingSettings
 import notification_helper as notif
-
+from android.runnable import run_on_ui_thread
+from jnius import autoclass
 PythonActivity = autoclass('org.kivy.android.PythonActivity')
 Intent = autoclass('android.content.Intent')
 Context = autoclass('android.content.Context')
@@ -91,8 +92,24 @@ def _start_service(result_code, projection_data, settings):
     else:
         activity.startService(service_intent)
     _is_recording[0] = True
+def ensure_recording_permissions():
+    PythonActivity = autoclass('org.kivy.android.PythonActivity')
+    Manifest = autoclass('android.Manifest$permission')
+    ContextCompat = autoclass('androidx.core.content.ContextCompat')
+    ActivityCompat = autoclass('androidx.core.app.ActivityCompat')
 
-
+    activity = PythonActivity.mActivity
+    needed = [Manifest.RECORD_AUDIO, Manifest.FOREGROUND_SERVICE]
+    missing = [p for p in needed if ContextCompat.checkSelfPermission(activity, p) != 0]
+    if missing:
+        ActivityCompat.requestPermissions(activity, missing, 202)
+        return False
+    return True
+0@run_on_ui_thread
+def request_projection():
+    activity = PythonActivity.mActivity
+    intent = manager.createScreenCaptureIntent()
+    activity.startActivityForResult(intent, 100)
 def stop_recording():
     activity = PythonActivity.mActivity
     stop_intent = Intent(notif.ACTION_STOP)
