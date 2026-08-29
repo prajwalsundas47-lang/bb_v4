@@ -21,7 +21,7 @@ android.archs = arm64-v8a
 android.accept_sdk_license = True
 android.add_resources = src/res:
 android.add_src = src
-android.extra_manifest_application_arguments = src/res/xml/manifest_snippets/extra_manifest_application.xml
+android.manifest_template = src/templates/AndroidManifest.tmpl.xml
 
 [buildozer]
 log_level = 3
