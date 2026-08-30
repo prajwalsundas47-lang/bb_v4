@@ -19,7 +19,7 @@ android.minapi = 29
 android.archs = arm64-v8a
 
 android.accept_sdk_license = True
-android.add_resources = src/res
+android.add_resources = src/templates
 android.add_src = src
 p4a.hook = p4a_hook.py
 
