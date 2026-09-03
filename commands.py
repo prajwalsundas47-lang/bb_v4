@@ -14,23 +14,23 @@ from math_solver import solve_math
 from wikipedia import search_wikipedia
 from voice import start_conversation_mode
 from screen_recorder_control import start_recording, stop_recording, is_recording
-def execute(intent, text):
 
+def execute(intent, text):
     if intent == "greeting":
         return "Hello Boss! 👋"
 
     elif intent == "start_recording":
-    if is_recording():
-        return "Already recording, Boss."
-    if not has_overlay_permission():
-        request_overlay_permission()
-        return "I need overlay permission — please grant it, then say start recording again."
-    from bb_notify import notify
-    start_recording(
-        on_error=lambda msg: notify(f"⚠️ {msg}"),
-        on_success=lambda msg: notify(f"✅ {msg}")
-    )
-    return "🎬 Requesting screen capture permission — tap 'Start now' on the dialog."
+         if is_recording():
+            return "Already recording, Boss."
+         if not has_overlay_permission():
+            request_overlay_permission()
+            return "I need overlay permission — please grant it, then say start recording again."
+         from bb_notify import notify
+         start_recording(
+           on_error=lambda msg: notify(f"⚠️ {msg}"),
+           on_success=lambda msg: notify(f"✅ {msg}")
+         )
+         return "🎬 Requesting screen capture permission — tap 'Start now' on the dialog."
 
     elif intent == "who_are_you":
         return "I am BB V4, your personal AI assistant."
