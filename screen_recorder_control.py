@@ -105,7 +105,7 @@ def ensure_recording_permissions():
         ActivityCompat.requestPermissions(activity, missing, 202)
         return False
     return True
-0@run_on_ui_thread
+@run_on_ui_thread
 def request_projection():
     activity = PythonActivity.mActivity
     intent = manager.createScreenCaptureIntent()
