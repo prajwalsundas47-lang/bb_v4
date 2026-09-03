@@ -25,7 +25,7 @@ SERVICE_CLASS_NAME = "org.bb.bbv4.ServiceRecordingService"
 
 def is_recording():
     return _is_recording[0]
-
+    start_floating_control()
 
 def start_recording(on_error=None, on_success=None):
     from android import activity as android_activity
@@ -118,6 +118,20 @@ def ensure_recording_permissions():
         return False
     return True
 @run_on_ui_thread
+def has_overlay_permission():
+    Settings = autoclass('android.provider.Settings')
+    activity = PythonActivity.mActivity
+    if VERSION.SDK_INT >= 23:
+        return Settings.canDrawOverlays(activity)
+    return True
+
+def request_overlay_permission():
+    Settings = autoclass('android.provider.Settings')
+    Uri = autoclass('android.net.Uri')
+    activity = PythonActivity.mActivity
+    intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                     Uri.parse("package:" + activity.getPackageName()))
+    activity.startActivity(intent)
 def request_projection():
     activity = PythonActivity.mActivity
     intent = manager.createScreenCaptureIntent()
@@ -132,3 +146,4 @@ def stop_recording():
     activity.stopService(service_intent)
 
     _is_recording[0] = False
+    stop_floating_control()
