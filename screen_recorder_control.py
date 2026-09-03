@@ -52,6 +52,18 @@ def start_recording(on_error=None, on_success=None):
         if on_error:
             on_error(f"DIAG: exception before dialog: {e}")
 
+def start_floating_control():
+    activity = PythonActivity.mActivity
+    FloatingService = autoclass('org.bb.bbv4.FloatingControlService')
+    intent = Intent(activity, FloatingService)
+    activity.startService(intent)
+
+def stop_floating_control():
+    activity = PythonActivity.mActivity
+    FloatingService = autoclass('org.bb.bbv4.FloatingControlService')
+    intent = Intent(activity, FloatingService)
+    activity.stopService(intent)
+
 
 def _on_activity_result(request_code, result_code, data, on_error=None, on_success=None):
     if on_error:
