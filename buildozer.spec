@@ -9,7 +9,7 @@ source.include_exts = py,png,jpg,json,xml
 version = 4.0
 
 requirements = python3==3.11.9,hostpython3==3.11.9,kivy==2.3.1,pyjnius,certifi,sympy,android
-services = ServiceRecordingService:src/org/bb/bbv4/ServiceRecordingService.java
+services = ServiceRecordingService:src/org/bb/bbv4/ServiceRecordingService.java,FloatingControlService:src/org/bb/bbv4/FloatingControlService.java
 orientation = portrait
 fullscreen = 0
 
