@@ -31,7 +31,7 @@ def execute(intent, text):
         stop_recording()
         return "Stopping recording."
 
-    elif intent == "who_are_you"::
+    elif intent == "who_are_you":
         return "I am BB V4, your personal AI assistant."
 
     elif intent == "time":
