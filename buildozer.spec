@@ -13,7 +13,7 @@ services = ServiceRecordingService:src/org/bb/bbv4/ServiceRecordingService.java
 orientation = portrait
 fullscreen = 0
 
-android.permissions = RECORD_AUDIO,INTERNET,MODIFY_AUDIO_SETTINGS,CAMERA,WRITE_SETTINGS,QUERY_ALL_PACKAGES,FOREGROUND_SERVICE,FOREGROUND_SERVICE_MEDIA_PROJECTION,POST_NOTIFICATIONS,SYSTEM_ALERT_WINDOW,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE,WAKE_LOCK,BIND_ACCESSIBILITY_SERVICE
+android.permissions = RECORD_AUDIO,FOREGROUND_SERVICE,SYSTEM_ALERT_WINDOW,...(your existing ones)
 android.api = 33
 android.minapi = 29
 android.archs = arm64-v8a
