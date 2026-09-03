@@ -118,13 +118,13 @@ def ensure_recording_permissions():
         return False
     return True
 @run_on_ui_thread
+
 def has_overlay_permission():
     Settings = autoclass('android.provider.Settings')
     activity = PythonActivity.mActivity
     if VERSION.SDK_INT >= 23:
         return Settings.canDrawOverlays(activity)
     return True
-
 def request_overlay_permission():
     Settings = autoclass('android.provider.Settings')
     Uri = autoclass('android.net.Uri')
