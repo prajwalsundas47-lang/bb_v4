@@ -1,4 +1,5 @@
 import datetime
+from screen_recorder_control import start_recording, stop_recording, is_recording, has_overlay_permission, request_overlay_permission
 from memory import remember, recall, recall_all, forget
 from app_launcher import open_app
 from calculator import calculate
@@ -18,13 +19,19 @@ def execute(intent, text):
     if intent == "greeting":
         return "Hello Boss! 👋"
 
-    if not has_overlay_permission():
-    request_overlay_permission()
-    # tell user to grant it, then say the command again
-else:
-    start_recording(on_error=..., on_success=...)
-    
-    elif intent == "who_are_you":
+    elif intent == "start_recording":
+        if not has_overlay_permission():
+            request_overlay_permission()
+            return "I need permission to draw over other apps for the recording controls. Please grant it, then say start recording again."
+        else:
+            start_recording(on_error=print, on_success=print)
+            return "Starting screen recording."
+
+    elif intent == "stop_recording":
+        stop_recording()
+        return "Stopping recording."
+
+    elif intent == "who_are_you"::
         return "I am BB V4, your personal AI assistant."
 
     elif intent == "time":
