@@ -18,6 +18,12 @@ def execute(intent, text):
     if intent == "greeting":
         return "Hello Boss! 👋"
 
+    if not has_overlay_permission():
+    request_overlay_permission()
+    # tell user to grant it, then say the command again
+else:
+    start_recording(on_error=..., on_success=...)
+    
     elif intent == "who_are_you":
         return "I am BB V4, your personal AI assistant."
 
