@@ -20,16 +20,17 @@ def execute(intent, text):
         return "Hello Boss! 👋"
 
     elif intent == "start_recording":
-        if not has_overlay_permission():
-            request_overlay_permission()
-            return "I need permission to draw over other apps for the recording controls. Please grant it, then say start recording again."
-        else:
-            start_recording(on_error=print, on_success=print)
-            return "Starting screen recording."
-
-    elif intent == "stop_recording":
-        stop_recording()
-        return "Stopping recording."
+    if is_recording():
+        return "Already recording, Boss."
+    if not has_overlay_permission():
+        request_overlay_permission()
+        return "I need overlay permission — please grant it, then say start recording again."
+    from bb_notify import notify
+    start_recording(
+        on_error=lambda msg: notify(f"⚠️ {msg}"),
+        on_success=lambda msg: notify(f"✅ {msg}")
+    )
+    return "🎬 Requesting screen capture permission — tap 'Start now' on the dialog."
 
     elif intent == "who_are_you":
         return "I am BB V4, your personal AI assistant."
